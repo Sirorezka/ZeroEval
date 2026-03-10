@@ -6,11 +6,17 @@ import urllib.request
 from tqdm import tqdm
 import json
 import os
-from unified_utils import load_eval_data, save_outputs
+from unified_utils import load_eval_data, save_outputs, prepare_save_outputs
 from global_configs import HF_TEMPLATED_MODELS, IM_END_MODELS
 from unified_utils import openai_chat_request, retry_handler, google_chat_request, cohere_chat_request, mistral_chat_request, anthropic_chat_request, together_chat_request, reka_chat_request
 from hf_models import DecoderOnlyModelManager
 from transformers import AutoTokenizer
+from llm_engines import(
+    create_vllm_async_engine, 
+    run_vllm_async_inference,
+    shutdown_vllm_async_engine
+)
+
 
 # import multiprocessing as mp
 # mp.set_start_method('spawn', force=True)
@@ -24,6 +30,7 @@ def parse_args():
     parser.add_argument('--model_pretty_name', default=None, type=str)
     parser.add_argument('--tokenizer_name', default="auto", type=str)
     parser.add_argument('--tensor_parallel_size', type=int, default=1)
+    parser.add_argument('--data_parallel_size', type=int, default=1)
     parser.add_argument('--dtype', type=str, default="auto")
     parser.add_argument('--tokenizer_mode', type=str, default="auto")
     parser.add_argument('--data_name', default="wild_bench", type=str)
@@ -89,12 +96,33 @@ def infer_maybe_lora(model_name):
 def sanitize_args(args):
     if args.download_dir == "default":
         args.download_dir = None
+
+    if args.model_pretty_name:
+        err = ValueError(f"incorrect value for model_pretty_name: {args.model_pretty_name}")
+        assert args.model_pretty_name.find("/")<0, err
+        assert args.model_pretty_name.find("\\")<0, err
+
+    if args.output_folder:
+        args.output_folder = args.output_folder.rstrip("/")
+
     return args
 
 if __name__ == "__main__":
     args = parse_args()
     args = sanitize_args(args)
 
+
+    print("loading dataset!")
+    if args.use_hf_conv_template:
+        HF_TEMPLATED_MODELS.append(args.model_name)
+    if args.use_imend_stop:
+        IM_END_MODELS.append(args.model_name)
+    
+    # TODO: we need to support the case when you have an existing file
+    
+    # Data loading
+    id_strs, chat_history, model_inputs, metadata = load_eval_data(args)
+    print("loading dataset ... done!")
 
 
     # Load the model
@@ -110,12 +138,16 @@ if __name__ == "__main__":
             lora_request = LoRARequest(lora_model_name_or_path.split("/")[-1], 1, lora_model_name_or_path)
         else:
             lora_request = None
+
         llm = LLM(model=base_model_name_or_path, tokenizer=args.tokenizer_name, tensor_parallel_size=args.tensor_parallel_size,
                         download_dir=args.download_dir, dtype=args.dtype, tokenizer_mode=args.tokenizer_mode,
                         max_model_len=max_model_len, trust_remote_code=True,
                         gpu_memory_utilization=args.gpu_memory_utilization,
                         enable_lora=lora_request is not None
                         )
+    elif args.engine == "vllm_async":
+        from vllm import SamplingParams   
+        llm = create_vllm_async_engine(args)
     elif args.engine == "hf":
         llm = DecoderOnlyModelManager(args.model_name, args.model_name, cache_dir=args.download_dir,
                                     bf16=args.hf_bf16, gptq=args.hf_gptq)
@@ -133,19 +165,6 @@ if __name__ == "__main__":
     elif args.engine == "reka":
         pass
 
-    print("loading dataset!")
-
-    if args.use_hf_conv_template:
-        HF_TEMPLATED_MODELS.append(args.model_name)
-    if args.use_imend_stop:
-        IM_END_MODELS.append(args.model_name)
-
-    # TODO: we need to support the case when you have an existing file
-
-
-    # Data loading
-    id_strs, chat_history, model_inputs, metadata = load_eval_data(args)
-
 
 
     # decide start_index and end_index by num_shards and shard_id
@@ -158,8 +177,6 @@ if __name__ == "__main__":
             args.end_index = num_data
 
 
-
-
     # Decide the output filepath
     if args.filepath == "auto":
         # Decide the output filepath
@@ -167,9 +184,9 @@ if __name__ == "__main__":
             args.model_pretty_name = args.model_name.split("/")[-1]
         os.system(f"mkdir -p {args.output_folder}")
         if args.end_index == -1 and args.start_index == 0:
-            filepath = f"{args.output_folder}/{args.model_pretty_name}.json"
+            filepath = os.path.join(args.output_folder,f"{args.model_pretty_name}.json")
         else:
-            filepath = f"{args.output_folder}/{args.model_pretty_name}.{args.start_index}-{args.end_index}.json"
+            filepath = os.path.join(args.output_folder,f"{args.model_pretty_name}.{args.start_index}-{args.end_index}.json")
     else:
         filepath = args.filepath
         output_folder = "/".join(filepath.split("/")[:-1])
@@ -183,7 +200,7 @@ if __name__ == "__main__":
     chat_history = chat_history[args.start_index:args.end_index]
     metadata = {key: metadata[key][args.start_index:args.end_index] for key in metadata}
 
-    print("loading dataset ... done!")
+    
 
     # speical handling
     stop_words = []
@@ -235,16 +252,38 @@ if __name__ == "__main__":
 
     todo_inputs = model_inputs[num_skipped:]
 
-    if args.engine == "vllm":
 
-        sampling_params = SamplingParams(top_p=args.top_p, temperature=args.temperature,            repetition_penalty=args.repetition_penalty, max_tokens=args.max_tokens,
+    print(f"Outputs will be saved in {filepath}")
+    save_outputs_short = prepare_save_outputs(
+                    args = args, 
+                    id_strs = id_strs, 
+                    chat_history = chat_history, 
+                    metadata = metadata, 
+                    model_inputs = model_inputs, 
+                    filepath = filepath
+                )
+
+    if args.engine == "vllm":
+        sampling_params = SamplingParams(top_p=args.top_p, temperature=args.temperature,            
+                                         repetition_penalty=args.repetition_penalty, max_tokens=args.max_tokens,
                                          stop=stop_words, stop_token_ids=stop_token_ids, include_stop_str_in_output=include_stop_str_in_output, n=args.num_outputs)
+        
         for cur_id in tqdm(range(0, len(todo_inputs), args.batch_size), desc=f"Generating {args.model_name} from {args.start_index} to {args.end_index}"):
             batch_inputs = todo_inputs[cur_id:cur_id+args.batch_size]
             batch_outputs = llm.generate(batch_inputs, sampling_params, use_tqdm=False, lora_request=lora_request)
             outputs.extend([[o.text for o in x.outputs] for x in batch_outputs]) # TODO: enbale multiple generation
             save_outputs(args, id_strs, outputs, chat_history, metadata, model_inputs, filepath)
         save_outputs(args, id_strs, outputs, chat_history, metadata, model_inputs, filepath)
+
+    elif args.engine == "vllm_async":
+        sampling_params = SamplingParams(top_p=args.top_p, temperature=args.temperature,            
+                                         repetition_penalty=args.repetition_penalty, max_tokens=args.max_tokens,
+                                         stop=stop_words, stop_token_ids=stop_token_ids, include_stop_str_in_output=include_stop_str_in_output, n=args.num_outputs)
+
+        new_outputs = run_vllm_async_inference(llm, args, sampling_params, todo_inputs[:10], saver = save_outputs_short)
+        outputs.extend(new_outputs)
+        save_outputs_short(outputs = outputs)
+        shutdown_vllm_async_engine(llm)
 
     elif args.engine == "hf":
         for cur_id in tqdm(range(0, len(todo_inputs), args.batch_size), desc=f"Generating {args.model_name} from {args.start_index} to {args.end_index} on {args.data_name}"):
