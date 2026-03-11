@@ -9,7 +9,7 @@ import dataclasses
 from enum import auto, IntEnum
 from typing import List, Any, Dict, Union, Tuple
 from transformers import AutoTokenizer
-from global_configs import HF_TEMPLATED_MODELS
+from .global_configs import HF_TEMPLATED_MODELS
 
 
 # A global registry for all conversation templates

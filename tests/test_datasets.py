@@ -3,6 +3,7 @@ from datasets import load_dataset
 import pytest
 from huggingface_hub import login
 
+from src.tasks import TASKS_COLLECTION
 
 def test_load_ZebraLogicBench():
     try:
@@ -10,3 +11,13 @@ def test_load_ZebraLogicBench():
     except Exception as e:
         pytest.fail(f"Loading dataset failed with exception: {e}")
     
+
+
+def test_hendrycks_math():
+
+    ds_name = "hendrycks-math"
+    task = TASKS_COLLECTION[ds_name]
+    dataset = task.load_dataset()
+
+    assert len(dataset) == task.total_num_examples
+    assert task.id_name in dataset[0].keys()

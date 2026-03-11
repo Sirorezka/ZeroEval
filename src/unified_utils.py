@@ -10,7 +10,6 @@ if openai.__version__ == "0.28.0":
     OPENAI_API_ERROR = openai.error.APIError
 else:
     from openai import OpenAI
-
     OPENAI_RATE_LIMIT_ERROR = openai.RateLimitError
     OPENAI_API_ERROR = openai.APIError
 
@@ -35,14 +34,14 @@ from mistralai.models.chat_completion import ChatMessage
 from anthropic import Anthropic
 from reka.client import Reka
 
-
-from datasets import load_dataset
 from tqdm import tqdm
-from fastchat_conversation import map_to_conv, HF_Conversation
 import json
 from together import Together
 
-from task_configs import mapping_task_names, prompt_generation, result_format
+
+from src.fastchat_conversation import map_to_conv, HF_Conversation
+from src.task_configs import mapping_task_names, prompt_generation, result_format
+from src.config_parser import RunConfig
 
 
 def apply_template(chat_history, model_name, args):
@@ -64,7 +63,8 @@ def apply_template(chat_history, model_name, args):
     return model_inputs
 
 
-def load_eval_data(args, data_name=None, model_name=None):
+
+def load_eval_data(args: RunConfig, data_name=None, model_name=None):
     if data_name is None:
         data_name = args.data_name
     if model_name is None:

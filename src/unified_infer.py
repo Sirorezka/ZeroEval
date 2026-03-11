@@ -1,70 +1,27 @@
-import requests
 from typing import List
-import argparse
-from datasets import load_dataset
-import urllib.request
+
 from tqdm import tqdm
 import json
 import os
-from unified_utils import load_eval_data, save_outputs, prepare_save_outputs
-from global_configs import HF_TEMPLATED_MODELS, IM_END_MODELS
-from unified_utils import openai_chat_request, retry_handler, google_chat_request, cohere_chat_request, mistral_chat_request, anthropic_chat_request, together_chat_request, reka_chat_request
-from hf_models import DecoderOnlyModelManager
 from transformers import AutoTokenizer
-from llm_engines import(
+
+
+from src.unified_utils import load_eval_data, save_outputs, prepare_save_outputs
+from src.global_configs import HF_TEMPLATED_MODELS, IM_END_MODELS
+from src.unified_utils import openai_chat_request, retry_handler, google_chat_request, cohere_chat_request, mistral_chat_request, anthropic_chat_request, together_chat_request, reka_chat_request
+from src.hf_models import DecoderOnlyModelManager
+
+from src.llm_engines import(
     create_vllm_async_engine, 
     run_vllm_async_inference,
     shutdown_vllm_async_engine
 )
+from src.config_parser import parse_args
 
 
 # import multiprocessing as mp
 # mp.set_start_method('spawn', force=True)
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--engine', default="vllm", type=str)
-    parser.add_argument('--output_folder', default="./result_dirs/wild_bench/", type=str)
-    parser.add_argument('--download_dir', default=None, type=str)
-    parser.add_argument('--model_name', default=None, type=str)
-    parser.add_argument('--model_pretty_name', default=None, type=str)
-    parser.add_argument('--tokenizer_name', default="auto", type=str)
-    parser.add_argument('--tensor_parallel_size', type=int, default=1)
-    parser.add_argument('--data_parallel_size', type=int, default=1)
-    parser.add_argument('--dtype', type=str, default="auto")
-    parser.add_argument('--tokenizer_mode', type=str, default="auto")
-    parser.add_argument('--data_name', default="wild_bench", type=str)
-    parser.add_argument('--batch_size', default=1, type=int)
-    parser.add_argument('--num_outputs', default=1, type=int)
-    parser.add_argument('--top_p',default=1, type=float)
-    parser.add_argument('--temperature',default=0, type=float)
-    parser.add_argument('--repetition_penalty',default=1, type=float)
-    parser.add_argument('--max_tokens',default=7500, type=int)
-    parser.add_argument('--max_model_len',default=-1, type=int)
-    parser.add_argument('--num_shards', default=1, type=int)
-    parser.add_argument('--shard_id', default=0, type=int)
-    parser.add_argument('--start_index',default=0, type=int) # 0 means from the beginning of the list
-    parser.add_argument('--end_index',default=-1, type=int) # -1 means to the end of the list
-    parser.add_argument('--filepath',default="auto", type=str)
-
-    parser.add_argument('--cache_filepath', default=None, type=str)
-
-    parser.add_argument('--follow_up_mode', default="N/A", type=str) # N/A means not a follow up
-    parser.add_argument('--follow_up_file', default=None, type=str) # if you have an existing file
-
-    parser.add_argument('--overwrite', action='store_true')
-    parser.add_argument('--no_repeat_ngram_size', default=0, type=int)
-    parser.add_argument('--hf_bf16', action='store_true')
-    parser.add_argument('--hf_gptq', action='store_true')
-    parser.add_argument('--gpu_memory_utilization', default=0.9, type=float)
-
-    parser.add_argument('--use_hf_conv_template', action='store_true')
-    parser.add_argument('--use_imend_stop', action='store_true')
-
-    # only for MT-bench; not useful for other benchmarks
-    # parser.add_argument('--cot', type=str, default="True")
-    parser.add_argument('--run_name', type=str, default="")
-    return parser.parse_args()
 
 def infer_maybe_lora(model_name):
     if os.path.exists(model_name):
@@ -93,24 +50,10 @@ def infer_maybe_lora(model_name):
         lora_model = None
     return base_model_name_or_path, lora_model
 
-def sanitize_args(args):
-    if args.download_dir == "default":
-        args.download_dir = None
 
-    if args.model_pretty_name:
-        err = ValueError(f"incorrect value for model_pretty_name: {args.model_pretty_name}")
-        assert args.model_pretty_name.find("/")<0, err
-        assert args.model_pretty_name.find("\\")<0, err
-
-    if args.output_folder:
-        args.output_folder = args.output_folder.rstrip("/")
-
-    return args
 
 if __name__ == "__main__":
     args = parse_args()
-    args = sanitize_args(args)
-
 
     print("loading dataset!")
     if args.use_hf_conv_template:
