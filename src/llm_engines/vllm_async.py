@@ -2,8 +2,13 @@ from argparse import Namespace
 import asyncio
 from asyncio import Queue, QueueEmpty
 from typing import List, Any, Callable
-from vllm import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
 from tqdm import tqdm
+
+try:
+    from vllm import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
+except:
+    pass
+
 
 def create_vllm_async_engine(args: Namespace):
     max_model_len = None if args.max_model_len == -1 else args.max_model_len
@@ -13,7 +18,7 @@ def create_vllm_async_engine(args: Namespace):
         tensor_parallel_size=args.tensor_parallel_size,
         data_parallel_size=args.data_parallel_size,
         dtype=args.dtype,
-        gpu_memory_utilization=args.gpu_memory_utilization,
+        # gpu_memory_utilization=args.gpu_memory_utilization, # gives errors
         trust_remote_code=True,
         max_model_len=max_model_len,
     )
@@ -54,7 +59,6 @@ async def worker(llm: AsyncLLMEngine,
     """
 
 
-    cnt_saved = 0
     save_interval = 10 # save every 10 generations
 
     while not queue.empty():
@@ -80,7 +84,7 @@ async def worker(llm: AsyncLLMEngine,
             pbar.update(1)
             queue.task_done()
 
-            if worker_id == 0 and saver is not None:
+            if (saver is not None) and (pbar.n % save_interval == 0):
                 cnt_done = 0
                 for x in outputs:
                     # order metters, we can't save all completed outputs
@@ -88,10 +92,7 @@ async def worker(llm: AsyncLLMEngine,
                         cnt_done += 1
                     else:
                         break
-
-                if cnt_done-cnt_saved>=save_interval:
-                    saver(outputs[:cnt_done])
-                    cnt_saved = cnt_done
+                saver(outputs[:cnt_done])
 
         except Exception as e:
             print(f"Worker {worker_id} encountered an error: {e}")
@@ -139,11 +140,15 @@ def run_vllm_async_inference(llm,
     """
     Run inference using the async vLLM engine.
     Prompts are processed by async workers that send them to the engine.
+
+    Args:
+        prompts - are rendered prompts, e.g. chat template was applied to them.
+
     """
     if len(prompts) == 0:
         return []
     
-    num_workers = 4 * args.data_parallel_size
+    num_workers = 10 * args.data_parallel_size
     print(f"Num async workers {num_workers}")
     outputs = asyncio.run(_run_async_inference(llm, args, sampling_params, prompts, num_workers=num_workers, saver=saver))
     return outputs

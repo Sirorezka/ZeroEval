@@ -276,11 +276,15 @@ if __name__ == "__main__":
         save_outputs(args, id_strs, outputs, chat_history, metadata, model_inputs, filepath)
 
     elif args.engine == "vllm_async":
-        sampling_params = SamplingParams(top_p=args.top_p, temperature=args.temperature,            
-                                         repetition_penalty=args.repetition_penalty, max_tokens=args.max_tokens,
-                                         stop=stop_words, stop_token_ids=stop_token_ids, include_stop_str_in_output=include_stop_str_in_output, n=args.num_outputs)
-
-        new_outputs = run_vllm_async_inference(llm, args, sampling_params, todo_inputs[:10], saver = save_outputs_short)
+        sampling_params = SamplingParams(top_p=args.top_p, 
+                                         temperature=args.temperature,            
+                                         repetition_penalty=args.repetition_penalty, 
+                                         max_tokens=args.max_tokens,
+                                         stop=stop_words, 
+                                         stop_token_ids=stop_token_ids, 
+                                         include_stop_str_in_output=include_stop_str_in_output, 
+                                         n=args.num_outputs)
+        new_outputs = run_vllm_async_inference(llm, args, sampling_params, todo_inputs, saver = save_outputs_short)
         outputs.extend(new_outputs)
         save_outputs_short(outputs = outputs)
         shutdown_vllm_async_engine(llm)
