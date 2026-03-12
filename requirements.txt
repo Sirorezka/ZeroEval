@@ -1,3 +1,8 @@
+scikit-learn>=1.7.2
+vllm>=0.17
+transformers # <5.0 for vllm ~= 0.16
+pandas>=2.3
+numpy>=2.2.6
 openai
 datasets
 tenacity
@@ -8,4 +13,4 @@ anthropic
 reka-api
 jsonlines
 together
-fire
+pytest>=9.0.2
