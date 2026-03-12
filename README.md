@@ -1,17 +1,11 @@
-# ZeroEval: A Unified Framework for Evaluating Language Models
+# This is a Fork of ZeroEval
+
+
+### ZeroEval: A Unified Framework for Evaluating Language Models
 
 ZeroEval is a simple unified framework for evaluating (large) language models on various tasks.
-This repository aims to evaluate instruction-tuned LLMs for their zero-shot performance on various reasoning tasks such as MMLU and GSM. We evaluate LLMs with a unified setup by controlling the factors such as prompting, sampling, output parsing, etc. In ZeroEval, we perform **zero-shot** prompting, and instruct LM to output both reasoning and answer in a **json**-formatted output. We are actively adding new tasks. Contributions are welcome!
 
-- Leaderboard: [https://hf.co/spaces/allenai/ZeroEval](https://huggingface.co/spaces/allenai/ZeroEval)
-- [X post](https://x.com/billyuchenlin/status/1814037110577578377)
-
-
-## Todo
-
-- [ ] Support new tasks (GPPA, AIME, etc.)
-- [ ] Prefix-prefill for open models such that the parsing is easier
-- [ ] Add other formatting options (e.g. markup language instead of json, etc.)
+- original repo: [https://github.com/WildEval/ZeroEval](https://github.com/WildEval/ZeroEval)
 
 
 ## Installation
@@ -45,11 +39,15 @@ pip install -r requirements.txt
 
 ## Usage
 
-`zero_eval_local.sh` and `zero_eval_api.sh` are the two main scripts to run the evaluation.
+`zero_eval_local.sh` and `zero_eval_api.sh` are the two main scripts to run generations.
+
+`zero_score_gens.sh` for scoring generated outputs.
+
 
 ### Examples
+bash zero_eval_local.sh -d $TASK_NAME -f 'vllm_async' -m $MODEL_PATH -p $MODEL_NAME -s $NUM_GPUS -x $MAX_TOKENS -l $MAX_LEN
 
-- `bash zero_eval_local.sh -d mmlu-redux -m meta-llama/Meta-Llama-3-8B-Instruct -p Meta-Llama-3-8B-Instruct -s 4` (Run Llama-3-8B-Instruct with greedy decoding on `mmlu-redux`)
+- `bash zero_eval_local.sh -d mmlu-pro-short -f 'vllm_async' -m meta-llama/Meta-Llama-3-8B-Instruct -p Meta-Llama-3-8B-Instruct -s 4 -x 30000 -l 32768` (Run Llama-3-8B-Instruct with greedy decoding on `mmlu-pro-short`)
 
 - `bash zero_eval_api.sh -d gsm -f openai -m openai/gpt-4o-mini-2024-07-18 -p gpt-4o-mini-2024-07-18 -s 8` (Run gpt-4o-mini with greedy decoding on `gsm`)
 
@@ -70,56 +68,21 @@ More examples can be found in the `scripts` folder, e.g., the [scripts/_MMLU_red
 | `-m` | model_name | |
 | `-p` | model_pretty_name | |
 | `-s` | number of shards (When `-s 1` we'll use all your GPUs for loading the model and running the inference; When `-s K`, we'll use K GPUs and divide the data into K shards for each GPU to run the inference on a single shard, and merge the results at the end.) | 1 |
-| `-f` | engine (`vllm` by default for `zero_eval_local.sh`, can be changed to `hf`; For `zero_eval_api.sh`, we can use `openai`, `anthropic`, ...) | `vllm`/`openai` for `zero_eval_local/api.sh` |
+| `-f` | engine (`vllm_async` by default for `zero_eval_local.sh`, can be changed to `vllm`, `hf`; For `zero_eval_api.sh`, we can use `openai`, `anthropic`, ...) | `vllm`/`openai` for `zero_eval_local/api.sh` |
 | `-r` | run_name (the results will be saved in a sub folder with the `run_name` when it is specified) | "default" |
 | `-t` | temperature | 0 (greedy decoding) |
 | `-o` | top_p for nucleus sampling | 1.0 |
 | `-e` | repetition penalty | 1.0 |
 | `-b` | batch size | 4 |
-| `-x` | max_length | 4096 |
+| `-x` | max new tokens to generate | 30000 |
 
 </details>
 
-## Results
+## Evaluate Generations
 
-🚨 View results on our Leaderboard: [https://hf.co/spaces/allenai/ZeroEval](https://huggingface.co/spaces/allenai/ZeroEval)
-
-- `bash zero_score_gens.sh -d mmlu-pro` (Get summary results for all models for dataset `mmlu-pro`)
+- `bash zero_score_gens.sh -d mmlu-pro` (Evaluate generations for all models for dataset `mmlu-pro`)
 
 
+##  Summarize results
 
-- MMLU-Redux: `python -m src.evaluation.mcqa_eval mmlu-redux` --> [Full results](result_dirs/mmlu-redux.summary.md)
-- GSM/MATH-L5: `python -m src.evaluation.math_eval math-l5/gsm` --> [Full results](result_dirs/gsm.summary.md)
-- ZebraLogic: `python -m src.evaluation.zebra_grid_eval` --> [Full results](result_dirs/zebra-grid.summary.md)
-  and [Leaderboard](https://huggingface.co/spaces/allenai/ZebraLogic)
-- CRUX: `python -m src.evaluation.crux_eval` --> [Full results](result_dirs/crux.summary.md)
 - All: `python -m src.evaluation.summarize` --> [Full results](result_dirs/summary.md) ⬇️
-
-
-
-
-<!--
-### Changelogs
-
-- 08/02/2024: added Gemini 1.5 Pro Exp 0801 and CRUX results
-- 07/31/2024: added Meta-Llama-3.1-70B-Instruct and gemma-2-2b-it
-- 07/29/2024: added Llama-3.1-8B, Mistral-Large-2, and deepseek-coder-v2-0724  
--->
-
-## Citation
-If you find ZeroEval useful, please cite it as follows in your publication:
-
-```bibtex
-@software{Lin_ZeroEval_A_Unified_2024,
-    author = {Lin, Bill Yuchen},
-    month = jul,
-    title = {{ZeroEval: A Unified Framework for Evaluating Language Models}},
-    url = {https://github.com/WildEval/ZeroEval},
-    year = {2024}
-}
-```
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=WildEval/ZeroEval&type=Date)](https://star-history.com/#WildEval/ZeroEval&Date)
-
