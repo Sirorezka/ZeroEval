@@ -18,7 +18,7 @@ max_model_len=-1
 
 gpu_memory_utilization=0.95
 
-MAX_TOKENS=4096; 
+MAX_TOKENS=30000; 
 
 # Parse named arguments
 while getopts ":d:m:p:s:r:t:o:e:f:b:x:l:" opt; do

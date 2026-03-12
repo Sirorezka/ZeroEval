@@ -4,7 +4,7 @@
 DATA_NAME="unk"
 
 # Parse named arguments
-while getopts ":d:m:p:s:r:t:o:e:f:b:x:l:" opt; do
+while getopts ":d:" opt; do
   case $opt in
     d) DATA_NAME="$OPTARG"
     ;;
@@ -20,8 +20,14 @@ if [ $DATA_NAME == "zebra_grid" ]; then
 elif [ $DATA_NAME == "hendrycks-math" ]; then
     # result_dirs/zebra-grid.summary.md
     python -m src.evaluation.hendrycks_math_eval
+elif [ $DATA_NAME == "mmlu-pro" ]; then
+    # result_dirs/zebra-grid.summary.md
+    python -m src.evaluation.mmlu_pro_eval mmlu-pro
+elif [ $DATA_NAME == "mmlu-pro-short" ]; then
+    # result_dirs/zebra-grid.summary.md
+    python -m src.evaluation.mmlu_pro_eval mmlu-pro-short
 else
-    echo "Invalid dataset_name: '$DATA_NAME'"
+    echo "Can't get accuracy scores for dataset. Invalid dataset_name: '$DATA_NAME'"
     exit 1
 fi
 

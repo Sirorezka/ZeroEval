@@ -12,10 +12,14 @@ def test_load_ZebraLogicBench():
         pytest.fail(f"Loading dataset failed with exception: {e}")
     
 
+test_data = [
+("hendrycks-math"),
+("mmlu-pro"),
+("mmlu-pro-short"),
+]
+@pytest.mark.parametrize("ds_name", test_data)
+def test_hendrycks_math(ds_name):
 
-def test_hendrycks_math():
-
-    ds_name = "hendrycks-math"
     task = TASKS_COLLECTION[ds_name]
     dataset = task.load_dataset()
 

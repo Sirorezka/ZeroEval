@@ -10,6 +10,8 @@ from collections import Counter
 from collections import defaultdict
 from src.tasks import TASKS_COLLECTION
 
+TASK = TASKS_COLLECTION['zebra-grid']
+
 private_solutions = {}
 
 class NotEnoughExamplesError(Exception):
@@ -46,8 +48,8 @@ def eval_model(model, filepath, mode="best_of_n", max_N=None):
     total_cells = 0
     no_answer = 0
 
-    task = TASKS_COLLECTION['zebra-grid']
-    if task.total_num_examples != num_total_puzzles:
+    
+    if TASK.total_num_examples != num_total_puzzles:
         raise NotEnoughExamplesError("Task not Finished")
 
     num_total_puzzles_by_size = defaultdict(int)

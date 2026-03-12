@@ -135,6 +135,9 @@ def save_outputs(
 ):
     formatted_outputs = []
     for ind in range(len(outputs)):
+        if len(outputs[ind]) == 0:
+            # nothing generated, don't save the sample
+            continue
         output_item = {}
         output_item["session_id"] = id_strs[ind]
         output_item["chat_history"] = chat_history[ind]

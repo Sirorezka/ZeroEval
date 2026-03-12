@@ -174,7 +174,7 @@ def _strip_string(string):
 
     return string
 
-def is_equiv(str1, str2, verbose=True) -> bool:
+def is_equiv(str1, str2, verbose=False) -> bool:
     if str1 is None and str2 is None:
         return False
     

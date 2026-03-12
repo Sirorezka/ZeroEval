@@ -20,10 +20,9 @@ This repository aims to evaluate instruction-tuned LLMs for their zero-shot perf
   <summary> Click to expand </summary>
 
 ```bash
-conda create -n zeroeval python=3.10
+conda create -n zeroeval python=3.12
 conda activate zeroeval
-# pip install vllm -U # pip install -e vllm
-pip install vllm -U
+pip install -U "vllm>=0.17"
 pip install -r requirements.txt
 # export HF_HOME=/path/to/your/custom/cache_dir/
 ```
@@ -38,8 +37,10 @@ pip install -r requirements.txt
 - [CRUX](https://crux-eval.github.io/) (`-d crux`)
 - [MATH (Level 5)](https://huggingface.co/datasets/AI-MO/aimo-validation-math-level-5) (`-d math-l5`)
 - [GSM8K](https://openai.com/index/solving-math-word-problems/) (`-d gsm`)
+- [MMLU-Pro](https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro) (`-d mmlu-pro` or `-d mmlu-pro-short`)
+- [Hendrycks-MATH](https://huggingface.co/datasets/nlile/hendrycks-MATH-benchmark) (`-d hendrycks-math`)
 
-- More tasks will be added soon. (e.g., ARC, MMLU-Pro, etc.)
+- More tasks will be added soon. (e.g., ARC, ARC-2, etc.)
 <!-- - AlpacaEval (`-d alpaca-eval`) -->
 
 ## Usage
@@ -65,7 +66,7 @@ More examples can be found in the `scripts` folder, e.g., the [scripts/_MMLU_red
 
 | Arguments | Description | Default |
 |-----|-------------|---------|
-| `-d` | DATA_NAME: `mmlu-redux`, `gsm`, `math-l5`, `zebra-grid`, `alpaca_eval`, ... (see [src/task_configs.py](src/task_configs.py)) | |
+| `-d` | DATA_NAME: `mmlu-redux`, `gsm`, `math-l5`, `zebra-grid`, `alpaca_eval`, ... (see [src/tasks/tasks_meta.py](src/tasks/tasks_meta.py)) | |
 | `-m` | model_name | |
 | `-p` | model_pretty_name | |
 | `-s` | number of shards (When `-s 1` we'll use all your GPUs for loading the model and running the inference; When `-s K`, we'll use K GPUs and divide the data into K shards for each GPU to run the inference on a single shard, and merge the results at the end.) | 1 |
@@ -83,32 +84,27 @@ More examples can be found in the `scripts` folder, e.g., the [scripts/_MMLU_red
 
 🚨 View results on our Leaderboard: [https://hf.co/spaces/allenai/ZeroEval](https://huggingface.co/spaces/allenai/ZeroEval)
 
-- MMLU-Redux: `python src/evaluation/mcqa_eval.py mmlu-redux` --> [Full results](result_dirs/mmlu-redux.summary.md)
-- GSM/MATH-L5: `python src/evaluation/math_eval.py math-l5/gsm` --> [Full results](result_dirs/gsm.summary.md)
-- ZebraLogic: `python src/evaluation/zebra_grid_eval.py` --> [Full results](result_dirs/zebra-grid.summary.md)
+- `bash zero_score_gens.sh -d mmlu-pro` (Get summary results for all models for dataset `mmlu-pro`)
+
+
+
+- MMLU-Redux: `python -m src.evaluation.mcqa_eval mmlu-redux` --> [Full results](result_dirs/mmlu-redux.summary.md)
+- GSM/MATH-L5: `python -m src.evaluation.math_eval math-l5/gsm` --> [Full results](result_dirs/gsm.summary.md)
+- ZebraLogic: `python -m src.evaluation.zebra_grid_eval` --> [Full results](result_dirs/zebra-grid.summary.md)
   and [Leaderboard](https://huggingface.co/spaces/allenai/ZebraLogic)
-- CRUX: `python src/evaluation/crux_eval.py` --> [Full results](result_dirs/crux.summary.md)
-- All: `python src/evaluation/summarize.py` --> [Full results](result_dirs/summary.md) ⬇️
+- CRUX: `python -m src.evaluation.crux_eval` --> [Full results](result_dirs/crux.summary.md)
+- All: `python -m src.evaluation.summarize` --> [Full results](result_dirs/summary.md) ⬇️
 
 
 
-
-<!--
-python src/evaluation/mcqa_eval.py mmlu-redux
-python src/evaluation/math_eval.py math-l5
-python src/evaluation/zebra_grid_eval.py
-python src/evaluation/crux_eval.py
-python src/evaluation/summarize.py
-
-python src/evaluation/math_eval.py gsm
- -->
 
 <!--
 ### Changelogs
 
 - 08/02/2024: added Gemini 1.5 Pro Exp 0801 and CRUX results
 - 07/31/2024: added Meta-Llama-3.1-70B-Instruct and gemma-2-2b-it
-- 07/29/2024: added Llama-3.1-8B, Mistral-Large-2, and deepseek-coder-v2-0724  -->
+- 07/29/2024: added Llama-3.1-8B, Mistral-Large-2, and deepseek-coder-v2-0724  
+-->
 
 ## Citation
 If you find ZeroEval useful, please cite it as follows in your publication:
@@ -127,24 +123,3 @@ If you find ZeroEval useful, please cite it as follows in your publication:
 
 [![Star History Chart](https://api.star-history.com/svg?repos=WildEval/ZeroEval&type=Date)](https://star-history.com/#WildEval/ZeroEval&Date)
 
-
-<!--
-
-
-
-bash zero_eval_api.sh -f openai -d zebra-grid -m openai/o1-mini-2024-09-12 -p o1-mini-2024-09-12-v2 -s 4
-wait
-bash zero_eval_api.sh -f openai -d zebra-grid -m openai/o1-preview-2024-09-12 -p o1-preview-2024-09-12-v2 -s 4
-wait
-
-
-bash zero_eval_api.sh -f openai -d zebra-grid -m openai/o1-2024-12-17 -p o1-2024-12-17 -s 1
-wait
-
-model_name="openai/o1-2024-12-17"
-
-
-
-bash zero_eval_api.sh -d zebra-grid -f openai -m openai/gpt-4o-mini-2024-07-18 -p gpt-4o-mini-2024-07-18 -s 1 -n 32 -r "sampling" -t 0.5
-
- -->

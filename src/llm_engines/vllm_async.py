@@ -102,14 +102,8 @@ async def worker(llm: AsyncLLMEngine,
 
             pbar.update(1)
             if (saver is not None) and (pbar.n % save_interval == 0):
-                cnt_done = 0
-                for x in outputs:
-                    # order metters, we can't save all completed outputs
-                    if len(x)>0:
-                        cnt_done += 1
-                    else:
-                        break
-                saver(outputs[:cnt_done])
+                saver(outputs)
+                
         except Exception as e:
             print(f"Worker {worker_id} encountered an error: {e}")
             raise e
