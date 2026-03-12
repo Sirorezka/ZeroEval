@@ -42,6 +42,9 @@ def prompt_generation(data_name, data_item, args):
         prompt = apply_oeqa_template(data_item)
     elif data_name in ['gplanet']:
         prompt = apply_gplanet_template(data_item)
+    elif data_name in TASKS_COLLECTION:
+        task = TASKS_COLLECTION[data_name]
+        prompt = task.apply_template(data_item)
     else:
         raise ValueError(f"Data name {data_name} not supported")
     return prompt

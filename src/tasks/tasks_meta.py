@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from datasets import Dataset
 import datasets
 import pandas as pd
+from src.templates import MATH_HENDRYCKS_PROMPT
+import os
 
 # container for all existing tasks
 TASKS_COLLECTION: Dict[str, TaskMeta] = {}
@@ -34,10 +36,18 @@ class TaskMeta(ABC):
     def id_name(self):
         return self._id_name
          
-    def load_summary_file(self):
+    def load_summary_file(self) -> pd.DataFrame:
         data = pd.read_json(self.summary_file)
         return data
-    
+
+    def get_output_dir(self) -> str:
+         return os.path.join("result_dirs", self.name)
+
+    def apply_template(self, item: dict) -> str:
+        """ Apply Custom prompt template to Dataset item. """
+        raise NotImplementedError(f"Method 'apply_template' not implemented for {self.name}")
+
+
 
 @register_class
 class GSMTask(TaskMeta):
@@ -141,4 +151,9 @@ class HendrycksMathTask(TaskMeta):
 
      def load_dataset(self):
           dataset = datasets.load_dataset("nlile/hendrycks-MATH-benchmark", split="test")
-          return dataset     
+          return dataset
+          
+     def apply_template(self, item: dict) -> str:
+          train_prompt = MATH_HENDRYCKS_PROMPT
+          train_prompt = train_prompt.replace("{problem}", item["problem"])
+          return train_prompt

@@ -1,7 +1,7 @@
 import argparse
 
 from dataclasses import dataclass
-
+from typing import List
 
 @dataclass
 class RunConfig:    
@@ -51,6 +51,7 @@ def sanitize_args(args: RunConfig):
 
     if args.model_pretty_name:
         err = ValueError(f"incorrect value for model_pretty_name: {args.model_pretty_name}")
+        # folder name cannot contain any "/" or "\"
         assert args.model_pretty_name.find("/")<0, err
         assert args.model_pretty_name.find("\\")<0, err
 
@@ -59,7 +60,7 @@ def sanitize_args(args: RunConfig):
 
     return args
 
-def parse_args() -> RunConfig:
+def parse_args(cmd: List[str] | None = None) -> RunConfig:
     parser = argparse.ArgumentParser()
     parser.add_argument('--engine', default="vllm", type=str)
     parser.add_argument('--output_folder', default="./result_dirs/wild_bench/", type=str)
@@ -102,7 +103,7 @@ def parse_args() -> RunConfig:
     # only for MT-bench; not useful for other benchmarks
     # parser.add_argument('--cot', type=str, default="True")
     parser.add_argument('--run_name', type=str, default="")
-    args = parser.parse_args()
+    args = parser.parse_args(cmd)
 
     parsed_args = RunConfig(**vars(args))    
     parsed_args = sanitize_args(parsed_args)
